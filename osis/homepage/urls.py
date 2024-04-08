@@ -1,0 +1,17 @@
+from django.urls import path
+from .views import *
+from django.conf import settings
+from django.conf.urls.static import static
+
+urlpatterns = [
+    path('featuredproduct/', FeaturedProjectView.as_view()),
+    path('category/', CategoryCountAPIView.as_view()),
+    path('topcarmaker/', TopCarMakerAPIView.as_view()),
+    path('latestproduct/', LatestProductView.as_view()),
+    
+    
+    
+    
+]
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
