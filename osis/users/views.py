@@ -22,6 +22,41 @@ from admindashboard.models import *
 import json
 from django.db.models import Q
 import glob
+from django.views.decorators.http import require_POST
+from django.views.decorators.csrf import csrf_exempt
+from django.http import JsonResponse
+from sellerdashboard.models import *
+from django.db import IntegrityError
+from django.core.exceptions import ValidationError
+
+
+class create_review(APIView):
+    permission_classes = (IsAuthenticated,)
+    
+    def post(self, request, *args, **kwargs):
+        try:
+            user = request.user
+            data = request.data
+            product_id = data.get('productId')  # Assuming productId is the primary key of the product
+            product_instance = Product.objects.get(id=product_id)  # Changed from productinfo to Product
+            rating = data.get('rating')
+            comment = data.get('comment')
+            review = Review.objects.create(user=user, rating=rating, comment=comment, product=product_instance)  # Changed from product_id to product
+            print("Review created successfully")
+            review.save()
+            return Response({'status': 'Success'}, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            print(f"An error occurred: {e}")
+            return Response({'status': 'Error', 'message': 'An error occurred'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class GetMyReviews(APIView):
+    permission_classes = (IsAuthenticated,)
+    
+    def get(self, request, *args, **kwargs):
+        user = request.user
+        reviews = Review.objects.filter(user=user.id)
+        reviews_data = ReviewSerializer(reviews, many=True).data
+        return Response({'status': 'Success', 'data': reviews_data})
 
 class SearchedProducts(APIView):
     permission_classes = (AllowAny,)

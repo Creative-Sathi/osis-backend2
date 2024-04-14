@@ -1,7 +1,16 @@
 from django.db import models
 from authentication.models import User
 from sellerdashboard.models import productinfo as Product
+from django.core.validators import MinValueValidator, MaxValueValidator
 
+class Review(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    rating = models.IntegerField(validators=[MinValueValidator(0), MaxValueValidator(5)])
+    comment = models.TextField()
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)  # Changed from product_id to product
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 # Create your models here.
 
 class Cart(models.Model):

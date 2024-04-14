@@ -28,6 +28,10 @@ urlpatterns = [
     path('getallorders/', GetAllOrders.as_view()),
     
     path('addreturnreason/<int:order_id>',AddReturnReason.as_view()),
+    
+    path('create-review/', create_review.as_view(), name='create_review'),
+    path('getmyreviews/', GetMyReviews.as_view()),
+    
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -22,8 +22,19 @@ from quotation.models import Order as SellerOrder
 from quotation.models import Quotation,SpecificSellerQuotation
 from profileseller.models import *
 from admindashboard.models import Credit
+from users.serializers import *
 # # Create your views here.
 
+
+class GetMyReviews(APIView):
+    permission_classes = (IsAuthenticated,)
+
+    def get(self, request, format=None):
+        user_id = request.user.id
+        seller = Seller.objects.get(seller=user_id)
+        reviews = Review.objects.filter(product__seller_id=seller.id)
+        serializer = ReviewSerializer(reviews, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 class ProductinfoView(APIView):
     permission_classes = (IsAuthenticated,)

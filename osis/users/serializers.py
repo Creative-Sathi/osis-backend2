@@ -4,6 +4,7 @@ from sellerdashboard.models import *
 from sellerdashboard.serializers import productimageSerializer,producttagsSerializer
 from admindashboard.serializers import partinfoSerializer
 from .models import *
+from authentication.serializers import GetUserDetailsViewSerializer
 
 class searchedproductserializer(serializers.ModelSerializer):
     
@@ -37,6 +38,15 @@ class CartItemSerializer(serializers.ModelSerializer):
 class OrderSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
+        fields = '__all__'
+        
+class ReviewSerializer(serializers.ModelSerializer):
+    product=productinfoSerializer(read_only=True)
+    user = GetUserDetailsViewSerializer(read_only=True)
+    
+    
+    class Meta:
+        model = Review
         fields = '__all__'
         
 
