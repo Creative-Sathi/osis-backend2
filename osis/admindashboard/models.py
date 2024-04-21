@@ -26,7 +26,7 @@ class partinfo(models.Model):
     partName = models.CharField()
     description = models.TextField(blank=True ,null=True)
     availability = models.CharField(default="In Stock")
-    image = models.ImageField(upload_to=unique_filename,blank=True)
+    image = models.ImageField(upload_to=unique_filename,blank=True,null=True,default='uploads/partimages/default.jpg')
     status = models.CharField()
     
 class partNumber(models.Model):
@@ -41,6 +41,12 @@ class partAttribute(models.Model):
 class partimage(models.Model):
     part = models.ForeignKey(partinfo, on_delete=models.CASCADE,related_name='images')
     image = models.ImageField(upload_to=unique_filename,blank=True)
+    
+class companyimages(models.Model):
+    image = models.ImageField(upload_to='uploads/company/')
+    
+class categoryimages(models.Model):
+    image = models.ImageField(upload_to='uploads/category/')
 
 class Credit(models.Model):
     seller_profile =models.ForeignKey(Seller, on_delete=models.CASCADE,related_name='seller_profile')
@@ -55,6 +61,6 @@ class Credit(models.Model):
 def create_credit_for_approved_seller(sender, instance, **kwargs):
     if instance.pk:  # Check if instance exists
         old_instance = Seller.objects.get(pk=instance.pk)
-        if old_instance.status != 'Approved' and instance.status == 'Approved':  # Check if status has changed to 'Approved'
+        if old_instance.status != 'Approved' and (instance.status == "Approved" or instance.status == "Both" or instance.status == "Buyer" or instance.status == "Seller"):  # Check if status has changed to 'Approved'
             if not Credit.objects.filter(seller_profile=instance).exists():
                 Credit.objects.create(seller_profile=instance)

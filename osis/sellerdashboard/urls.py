@@ -23,6 +23,9 @@ urlpatterns = [
     path('redoproduct/',RedoProductInfoView.as_view()),
     
     path('reviewproduct/',ReviewProductInfoView.as_view()),
+    path('adminreviewproduct/',AdminReviewProductInfoView.as_view()),
+    
+    path('acceptreviewproduct/',AcceptReviewProductInfoView.as_view()),
     
     path('addproductcsv/', UploadProductInfoView.as_view()),
     

@@ -103,8 +103,13 @@ class UserLoginView(APIView):
                         return Response({'msg':'Your account verification is Under Process'},status=status.HTTP_200_OK)
                     elif seller.status == "Rejected":
                         return Response({'msg':'Your account verification is Rejected'},status=status.HTTP_200_OK)
-                    elif seller.status == "Approved":
-                        return Response({'token':token,'msg':'Seller Login Successful','role':role,'id':user.id},status=status.HTTP_200_OK)
+                    elif seller.status == "Seller":
+                        return Response({'token':token,'msg':'Seller Login Successful','id':user.id},status=status.HTTP_200_OK)
+                    elif seller.status == "Buyer":
+                        return Response({'token':token,'msg':'Buyer Login Successful','id':user.id},status=status.HTTP_200_OK)
+                    elif seller.status == "Approved" or seller.status == "Both":
+                        return Response({'token':token,'msg':'Login Successful','id':user.id},status=status.HTTP_200_OK)
+                    
                 elif role == "User":
                     return Response({'token':token,'username':user.username,'msg':'User Login Successful','role':role,'id':user.id},status=status.HTTP_200_OK) 
                 elif role == "Agent":

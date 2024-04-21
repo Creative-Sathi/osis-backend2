@@ -237,7 +237,7 @@ class CartListView(APIView):
         try:
             # Retrieve only active cart items
             cart = Cart.objects.get(user=user, is_active=True)
-            cart_items = CartItem.objects.filter(cart=cart)
+            cart_items = CartItem.objects.filter(cart=cart, is_active=True)
             
             # Serialize each cart item individually
             cart_items_data = CartItemSerializer(cart_items, many=True).data
@@ -248,6 +248,24 @@ class CartListView(APIView):
             print(f"An error occurred: {e}")
             return Response({'status': 'Error', 'data': 'An error occurred'})
 
+class UpdateCartItemsStatus(APIView):
+    def post(self, request):
+        # Extract item IDs from request data
+        item_ids = request.data.get('item_ids', [])
+        
+        print(f"Item IDs: {item_ids}")
+
+        if not item_ids:
+            return Response({'message': 'No item IDs provided'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            # Update is_active status for CartItem instances
+            CartItem.objects.filter(id__in=item_ids).update(is_active=False)
+           
+            return Response({'message': 'Cart items updated successfully'}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
 class UpdateQuantity(APIView):
     permission_classes = (IsAuthenticated,)
 
@@ -268,6 +286,7 @@ class RemoveFromCart(APIView):
         product_id = kwargs['product_id']
         user = request.user
         cart = Cart.objects.get(user=user.id, is_active=True)
+        print("CART", cart)
         cart_item = CartItem.objects.get(cart=cart, product=product_id)
         cart_item.delete()
         return Response({'message': 'Product removed from cart successfully'}, status=status.HTTP_200_OK)
@@ -297,27 +316,44 @@ class OrderCreateView(APIView):
         try:
             cart_id = request.data.get('cart')
             cart = Cart.objects.get(id=cart_id)
-            print("CART", cart)
-            order = Order.objects.create(
-                cart=cart,
-                fullname=request.data.get('fullname'),
-                phone=request.data.get('phone'),
-                Address=request.data.get('Address'),
-                payment_method=request.data.get('payment_method'),
-                total_items=request.data.get('total_items'),
-                total_price=request.data.get('total_price'),
-            )
-            # Mark the cart as inactive after the order is placed
-            cart.is_active = False
-            cart.save()
             
+            # Get only selected items
+            selected_items = CartItem.objects.filter(cart=cart, is_active=False)
+            print("SELECTED ITEMS", selected_items)
+            # Find seller of selected items in list as there can  be many
+            sellers = selected_items.values_list('product__seller_id', flat=True)
+            print("SELLERS", sellers)
+            for seller in sellers:
+                # Create new cart for selected items
+                new_cart = Cart.objects.create(user=cart.user)
+                
+                new_selected_items = selected_items.filter(product__seller_id=seller)
+                
+                # Update the cart field of these items to new_cart
+                new_selected_items.update(cart=new_cart)
+                
+                new_cart.is_active = False
+                new_cart.save()
+                    
+                address = request.data.get('Address')
+                address_instance = UserAddress.objects.get(id=address)
+                
+                order = Order.objects.create(
+                    cart=new_cart,
+                    delivery_address=address_instance,
+                    payment_method=request.data.get('payment_method'),
+                    total_items=request.data.get('total_items'),
+                    total_price=request.data.get('total_price'),
+                )
+                print("ORDER CREATED")
+                
             return Response({'message': 'Order created successfully'}, status=status.HTTP_201_CREATED)
         except Cart.DoesNotExist:
             return Response({'message': 'Cart does not exist'}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             print(f"An error occurred: {e}")
             return Response({'message': 'An error occurred'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
+
 class GetPartImage(APIView):
     permission_classes = (AllowAny,)
     
@@ -382,3 +418,51 @@ class AddReturnReason(APIView):
         order.status = "Return Requested"
         order.save()
         return Response({'message': 'Return reason added successfully'}, status=status.HTTP_200_OK)
+    
+class UserAddressOperation(APIView):
+    permission_classes = (IsAuthenticated,)
+    
+    def post(self, request, *args, **kwargs):
+        user = request.user
+        data = request.data
+        address = UserAddress.objects.create(
+            fullname=data.get('fullName'),
+            phone=data.get('phoneNum'),
+            descriptiveaddress=data.get('fullAddress'),
+            label=data.get('label'),
+            user=user
+        )
+        address.save()
+        return Response({'message': 'Address added successfully', 'data': {'id': address.id}}, status=status.HTTP_201_CREATED)
+    
+    def get(self, request, *args, **kwargs):
+        user = request.user
+        addresses = UserAddress.objects.filter(user=user)
+        addresses_data = UserAddressSerializer(addresses, many=True).data
+        return Response({'status': 'Success', 'data': addresses_data},status=status.HTTP_200_OK)
+    
+    def put(self, request, *args, **kwargs):
+        address_id = kwargs['address_id']
+        address = UserAddress.objects.get(id=address_id)
+        data = request.data
+        address.fullname = data.get('fullName')
+        address.phone = data.get('phoneNum')
+        address.descriptiveaddress = data.get('fullAddress')
+        address.label = data.get('label')
+        address.save()
+        return Response({'message': 'Address updated successfully'}, status=status.HTTP_200_OK)
+    
+    def delete(self, request, *args, **kwargs):
+        address_id = kwargs['address_id']
+        address = UserAddress.objects.get(id=address_id)
+        address.delete()
+        return Response({'message': 'Address deleted successfully'}, status=status.HTTP_200_OK)
+    
+class ProductReview(APIView):
+    permission_classes = (AllowAny,)
+    
+    def get(self, request, *args, **kwargs):
+        product_id = kwargs['product_id']
+        reviews = Review.objects.filter(product=product_id)
+        reviews_data = ReviewSerializer(reviews, many=True).data
+        return Response({'status': 'Success', 'data': reviews_data})

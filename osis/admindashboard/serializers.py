@@ -47,15 +47,11 @@ class partinfoSerializer(serializers.ModelSerializer):
         partinfo_id = validated_data.get('partinfo_id')
         # Check if any similar part already exists
         for part_number in partNumber_data:
-            
-            approved_part_number = partinfo.objects.filter(id = partinfo, status = 'Approved').first()
-            if approved_part_number:
-                found_part = partNumber.objects.filter(partNumber=part_number).first()
-                print(found_part.part.vehicleCompany,found_part.part.brand,found_part.part.model,found_part.part.manufactureYear,found_part.part.partSubCategories,found_part.part.status)
-                if found_part:
-                    if found_part.part.vehicleCompany == vehicle_company and found_part.part.brand == brand and found_part.part.model == model and found_part.part.manufactureYear == manufacture_year and found_part.part.partSubCategories == sub_category and found_part.part.status == 'Approved':
-                        print("Part with the same details already exists")
-                        raise ValueError(f"Part with the same details already exists for part number: {part_number}")
+            found_part = partNumber.objects.filter(partNumber=part_number).first()
+            if found_part:
+                if found_part.part.vehicleCompany == vehicle_company and found_part.part.brand == brand and found_part.part.model == model and found_part.part.manufactureYear == manufacture_year and found_part.part.partSubCategories == sub_category and found_part.part.status == 'Approved':
+                    print("Part with the same details already exists")
+                    raise ValueError(f"Part with the same details already exists for part number: {part_number}")
             
         part = partinfo.objects.create(**validated_data)
         for item in other_attributes_data:
@@ -144,4 +140,9 @@ class CreditSerializer(serializers.ModelSerializer):
 class UploadedImageSerializer(serializers.ModelSerializer):
     class Meta:
         model = partimages
+        fields = ('image',)
+        
+class companyimagesSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = companyimages
         fields = ('image',)

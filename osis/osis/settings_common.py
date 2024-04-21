@@ -1,14 +1,13 @@
 from pathlib import Path
 import os
 from datetime import timedelta
-from decouple import config, Csv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 AUTH_USER_MODEL = 'authentication.User'
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = config('SECRET_KEY')
+SECRET_KEY = 'django-insecure-#37n%30d!4f4e^w1h6*09spdeysz&f8p6x$5q^0u5!u(9h2&6g'
 
 INSTALLED_APPS = [
     'daphne',

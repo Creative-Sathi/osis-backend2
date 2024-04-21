@@ -131,6 +131,7 @@ class ApprovedProductSpecificInfoView(APIView):
         approved_products_list = list(approved_products)
         for product in approved_products:
             part_data = partinfoSerializer(product.part_id).data
+            print(product)
             partinfo_queryset = partinfo.objects.filter(id = product.part_id.id)
             attributes_queryset = partAttribute.objects.filter(part__in=partinfo_queryset)
             partnumber_queryset = partNumber.objects.filter(part__in=partinfo_queryset)
@@ -163,6 +164,8 @@ class DeletedProductInfoView(APIView):
             part_data = partinfoSerializer(product.part_id).data
             partinfo_queryset = partinfo.objects.filter(id = product.part_id.id)
             attributes_queryset = partAttribute.objects.filter(part__in=partinfo_queryset)
+            partnumber_queryset = partNumber.objects.filter(part__in=partinfo_queryset)
+            partnumber_serializer = partNumberReadSerializer(partnumber_queryset, many=True)
             attributes_serializer = partAttributeSerializer(attributes_queryset, many=True)
             attributes_data = attributes_serializer.data
             image_data = productimageSerializer(product.images.all(), many=True).data
@@ -172,6 +175,8 @@ class DeletedProductInfoView(APIView):
             product_data['attributes'] = attributes_data
             product_data['images'] = image_data
             product_data['tags'] = tag_data
+            product_data['partnumbers'] = partnumber_serializer.data
+            
             data.append(product_data)
         
         return Response(data, status=status.HTTP_200_OK)
@@ -214,6 +219,8 @@ class ApprovedProductInfoView(APIView):
             part_data = partinfoSerializer(product.part_id).data
             partinfo_queryset = partinfo.objects.filter(id = product.part_id.id)
             attributes_queryset = partAttribute.objects.filter(part__in=partinfo_queryset)
+            partnumber_queryset = partNumber.objects.filter(part__in=partinfo_queryset)
+            partnumber_serializer = partNumberReadSerializer(partnumber_queryset, many=True)
             attributes_serializer = partAttributeSerializer(attributes_queryset, many=True)
             attributes_data = attributes_serializer.data
             image_data = productimageSerializer(product.images.all(), many=True).data
@@ -221,6 +228,7 @@ class ApprovedProductInfoView(APIView):
             product_data = product_serializer.data[approved_products_list.index(product)]
             product_data['attributes'] = attributes_data
             product_data['images'] = image_data
+            product_data['partnumbers'] = partnumber_serializer.data
             product_data['tags'] = tag_data
             data.append(product_data)
         
@@ -383,6 +391,112 @@ class ReviewProductInfoView(APIView):
             
         return Response(data, status=status.HTTP_200_OK)
 
+class AdminReviewProductInfoView(APIView):
+    permission_classes=(AllowAny,)
+    
+    def get(self, request, format=None):
+        approved_products = reviewproductinfo.objects.filter(status='Reviewed').distinct()
+        product_serializer = reviewproductinfoSerializer(approved_products, many=True)
+        data = []
+
+        approved_products_list = list(approved_products)
+        
+        for product in approved_products_list:
+            reviewinfo_queryset = reviewproductinfo.objects.filter(id = product.id)
+            product_serializer = reviewproductinfoSerializer(reviewinfo_queryset, many=True)
+            product_data = product_serializer.data[0]
+            data.append(product_data)
+            
+        return Response(data, status=status.HTTP_200_OK)
+    
+class AcceptReviewProductInfoView(APIView):
+    permission_classes=(AllowAny,)
+    
+    def post(self, request, format=None):
+        try:
+            product_data = request.data
+            part_id = product_data['part_id']
+            product = reviewproductinfo.objects.filter(part_id=part_id)
+            print("Product: ", product)
+            approved_part_info_view = ApprovedPartInfoView()
+            response = approved_part_info_view.get(request)
+
+            if response.status_code == status.HTTP_200_OK:
+                data = response.data
+                for item in product:
+                    part_id = item.part_id
+                    normal_rate = item.normalRate
+                    bulk_rate = item.bulkRate
+                    stock_quantity = item.stockQuantity
+                    units = item.units
+                    seller_ids = item.seller_id
+                    seller_id = seller_ids.id
+                    
+                    part_id_list = []
+                    status_list = []
+                    match_found = False
+                    
+                    # Check if any partNumber matches the part_id
+                    for item in data:
+                        part_numbers = item.get('partNumber', [])
+                        for part_number in part_numbers:
+                            if part_number['partNumber'] == part_id:
+                                status_value = 'Approved'
+                                part_id_value = part_number['part']
+                                part_id_list.append(part_id_value)
+                                status_list.append(status_value)
+                                match_found = True
+                                break
+                    else:
+                        if not match_found:
+                            status_value = 'Reviewed'
+                            part_id_value = part_id
+                            part_id_list.append(part_id_value)
+                            status_list.append(status_value)
+        
+
+                    if part_id_list and status_list:
+                        part_id_list = list(map(str, part_id_list))
+                        status_list = list(map(str, status_list))
+                        print("Part ID List: ", part_id_list)
+                        print("Status List: ", status_list)
+                        for part_id_value, status_value in zip(map(str, part_id_list), status_list):
+                            if status_value == 'Approved':
+                                products_data = productinfo.objects.filter(part_id=int(part_id_value), seller_id=seller_id , status='Approved')
+                                if products_data.exists():
+                                    quantity = products_data[0].stockQuantity
+                                    products_data.update(stockQuantity=int(quantity) + stock_quantity)
+                                    products_data.update(normalRate=normal_rate)
+                                    products_data.update(bulkRate=bulk_rate)
+                                    products_data.update(units=units)
+                                else:
+                                    product_info = {
+                                        'part_id': part_id_value,
+                                        'normalRate': normal_rate,
+                                        'bulkRate': bulk_rate,
+                                        'stockQuantity': stock_quantity,
+                                        'units': units,
+                                        'seller_id': seller_id,
+                                        'status': status_value,
+                                    }
+
+                                    product_serializer = productinfoCSVSerializer(data=product_info, context={'request': request})
+                                    if product_serializer.is_valid():
+                                        product_serializer.save()
+                                        reviewproductinfo.objects.filter(part_id=part_id).delete()
+                                        
+                                    else:
+                                        return Response({'error': product_serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+                                    
+                                
+                            else:
+                                return Response({'msg':'Product not found'}, status=status.HTTP_404_NOT_FOUND)                    
+                else:
+                    return Response({'msg':'Product not found'}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({'error': f'An error occurred: {str(e)}','msg':'Failed to Approve Product'}, status=status.HTTP_400_BAD_REQUEST)
+
+
 class OrderInfoView(APIView):
     permission_classes=(IsAuthenticated,)
     
@@ -436,15 +550,16 @@ class OrderInfoView(APIView):
                 data.append(order_data)    
         
         for order in user_orders:
-            cartdetails = CartItem.objects.filter(cart = order.cart)
+            cartdetails = CartItem.objects.filter(cart = order.cart, product__seller_id=seller.id)
+            count = cartdetails.count()
             order_data = {
                 'id': 'C' + str(order.id),
                 'dateandtime': order.date.strftime('%Y-%m-%d'),
-                'Name' : order.fullname,
-                'phone': order.phone,
-                'Address': order.Address,
+                'Name' : order.delivery_address.fullname,
+                'phone': order.delivery_address.phone,
+                'Address': order.delivery_address.descriptiveaddress,
                 'payment_method': order.payment_method,
-                'total_items': order.total_items,
+                'total_items': count,
                 'total_price': order.total_price,
                 'products': [{'product_name': item.product.part_id.partName, 'quantity': item.quantity,} for item in cartdetails.all()],
                 
@@ -500,15 +615,17 @@ class AdminOrderInfoView(APIView):
                 data.append(order_data)    
         
         for order in user_orders:
-            cartdetails = CartItem.objects.filter(cart = order.cart)
+            cartdetails = CartItem.objects.filter(cart = order.cart , )
+            count = cartdetails.count()
+            print("Order",order)
             order_data = {
                 'id': 'C' + str(order.id),
                 'dateandtime': order.date.strftime('%Y-%m-%d'),
-                'Name' : order.fullname,
-                'phone': order.phone,
-                'Address': order.Address,
+                'Name' : order.delivery_address.fullname,
+                'phone': order.delivery_address.phone,
+                'Address': order.delivery_address.descriptiveaddress,
                 'payment_method': order.payment_method,
-                'total_items': order.total_items,
+                'total_items': count,
                 'total_price': order.total_price,
                 'products': [{'product_name': item.product.part_id.partName, 'quantity': item.quantity,} for item in cartdetails.all()],
                 

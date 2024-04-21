@@ -31,6 +31,8 @@ urlpatterns = [
     path('uploadpartimages/',upload_folder),
     path('getpartimages/<str:folder_name>/',partimageview.as_view()),
     
+    path('companyimages/',CompanyImagesView.as_view()),
+    
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -14,11 +14,16 @@ class FeaturedProjectView(APIView):
     permission_classes = [AllowAny]
     def get(self, request, format=None):
         try:
-            featuredproduct = FeaturedProduct.objects.all()
+            featuredproduct = FeaturedProduct.objects.filter(product_id__status='Approved')
             
             featuredproduct = featuredproduct.reverse()
             featuredproduct = featuredproduct[:10]
-            serializer = FeaturedProductSerializer(featuredproduct, many=True)            
+            serializer = FeaturedProductSerializer(featuredproduct, many=True)   
+            serializer_data = serializer.data
+            
+        
+                
+                         
             return Response(serializer.data, status=status.HTTP_200_OK)
         except Exception as e:
             return Response(str(e), status=status.HTTP_400_BAD_REQUEST)
@@ -43,7 +48,6 @@ class CategoryCountAPIView(APIView):
             .distinct()
         )
         
-        print(categories_with_counts)
         serializer = CategoryCountSerializer(categories_with_counts, many=True)
         return Response(serializer.data)
     
@@ -54,8 +58,7 @@ class TopCarMakerAPIView(APIView):
             partinfo.objects
             .values('brand')
             .filter(status='Approved')
-            .annotate(product_count=Coalesce(Count('Part'), 0))
-            .filter(product_count__gt=0) 
+            .annotate(product_count=Coalesce(Count('Part'), 0)) 
             .distinct()
         )
         serializer = TopCarMakerSerializer(topcarmaker, many=True)

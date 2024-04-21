@@ -19,6 +19,7 @@ class SellerProfile(models.Model):
     storewebsite = models.CharField(blank=True, null=True)
     storelogo = models.ImageField(upload_to= unique_filename, blank=True, null=True)
     storedescription = models.TextField()
+    usertype = models.CharField(blank=True, null=True)
   
 class Company(models.Model):
     name = models.CharField(max_length=255)

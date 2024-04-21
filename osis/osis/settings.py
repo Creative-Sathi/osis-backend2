@@ -1,9 +1,8 @@
 # settings.py
 import os
-from decouple import config
 
 # Detect the environment
-environment = os.environ.get('DJANGO_ENV', config('DJANGO_ENV', default='development'))  # development, deployment or production
+environment = 'development'  # development, deployment or production
 
 # Load common settings
 from .settings_common import *

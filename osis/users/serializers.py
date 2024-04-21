@@ -49,4 +49,10 @@ class ReviewSerializer(serializers.ModelSerializer):
         model = Review
         fields = '__all__'
         
+class UserAddressSerializer(serializers.ModelSerializer):
+    
+    class Meta:
+        model = UserAddress
+        fields = '__all__'
+        
 

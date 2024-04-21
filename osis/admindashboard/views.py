@@ -555,6 +555,7 @@ class AllCreditView(APIView):
     
     def get(self, request, *args, **kwargs):
         credits = Credit.objects.all()
+        
         credit_data = CreditSerializer(credits, many=True, context={'view': self}).data
         return Response({'status': 'Success', 'data': credit_data})
     
@@ -652,4 +653,41 @@ class partimageview(APIView):
                 images.append(os.path.join('uploads', 'partimages', folder_name, filename))
         
         return Response({'images': images})
+    
+def unique_filename(instance, filename):
+    ext = filename.split('.')[-1]
+    unique_id = str(uuid4())
+    unique_filename = f"{unique_id}.{ext}"
+    return unique_filename
+
+class CompanyImagesView(APIView):
+    permission_classes = (AllowAny,)
+    
+    def post(self, request, format=None):
+        
+        image_data = request.data
+        image_serializer = companyimagesSerializer(data=image_data)
+        if image_serializer.is_valid():
+            image_serializer.save()
+            return Response({'msg':'Image added Sucessfullly'}, status=status.HTTP_201_CREATED)
+        return Response(image_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    def get(self, request):
+        images = companyimages.objects.all()
+        image_serializer = companyimagesSerializer(images, many=True)
+        return Response(image_serializer.data)
+    
+    def put(self, request, format=None):
+        image_data = request.data
+        image_id = image_data['id']
+        try:
+            image_instance = companyimages.objects.get(pk=image_id)
+            image_serializer = companyimagesSerializer(image_instance, data=image_data, partial=True)
+            if image_serializer.is_valid():
+                image_serializer.save()
+                return Response(image_serializer.data)
+            return Response(image_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except companyimages.DoesNotExist:
+            return Response({"error": "Image not found"}, status=status.HTTP_404_NOT_FOUND)
+        
     

@@ -99,7 +99,7 @@ class GetAllApprovedSeller(APIView):
     permission_classes = (AllowAny,)
     
     def get(self, request, format = None):
-        all_seller = Seller.objects.filter(status='Approved')
+        all_seller = Seller.objects.filter(status__in=['Approved', 'Buyer', 'Seller', 'Both'])
         serializer = GetAllSellerSerializer(all_seller,many=True)
         return Response(serializer.data)
     
@@ -129,7 +129,7 @@ class ManageVendor(APIView):
         try:
             seller_id = request.data['seller']
             seller = Seller.objects.get(id=seller_id)
-            seller.status = request.data['status']
+            seller.status = request.data['usertype']
             seller.save()
             return Response({'msg':'Seller added Sucessfullly'}, status=status.HTTP_201_CREATED)
         except:

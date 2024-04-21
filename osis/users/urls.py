@@ -19,6 +19,7 @@ urlpatterns = [
     path('update_quantity/<int:product_id>/<int:quantity>/', UpdateQuantity.as_view(), name='update_quantity'),
     path('remove_from_cart/<int:product_id>/', RemoveFromCart.as_view(), name='remove_from_cart'),
     path('remove_all_from_cart/', RemoveAllFromCart.as_view(), name='remove_all_from_cart'),
+    path('update_cart_items/', UpdateCartItemsStatus.as_view(), name='update_cart_items'),
     
     path('create_order/', OrderCreateView.as_view(), name='create_order'),
     
@@ -31,6 +32,12 @@ urlpatterns = [
     
     path('create-review/', create_review.as_view(), name='create_review'),
     path('getmyreviews/', GetMyReviews.as_view()),
+    
+    path('productreview/<int:product_id>', ProductReview.as_view()),
+    
+    
+    path('address/', UserAddressOperation.as_view(), name='address'),
+    path('address/<int:address_id>/', UserAddressOperation.as_view(), name='address-detail'),
     
 ]
 if settings.DEBUG:
