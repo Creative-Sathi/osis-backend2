@@ -11,10 +11,9 @@ urlpatterns = [
     path('search/<str:search>',SearchedProducts.as_view()),
     path('search/product/',SearchedListProducts.as_view()),
     path('searchedproduct/<int:id>',SpecificSearchedProducts.as_view()),
-    
     path('similarproducts/<int:id>',SimilarProducts.as_view()),
-    
     path('add_to_cart/<int:product_id>/', AddToCart.as_view(), name='add_to_cart'),
+    path('buy-now/<int:product_id>/', BuyNow.as_view(), name='buy_now'),
     path('cart/', CartListView.as_view(), name='cart'),
     path('update_quantity/<int:product_id>/<int:quantity>/', UpdateQuantity.as_view(), name='update_quantity'),
     path('remove_from_cart/<int:product_id>/', RemoveFromCart.as_view(), name='remove_from_cart'),
@@ -38,6 +37,8 @@ urlpatterns = [
     
     path('address/', UserAddressOperation.as_view(), name='address'),
     path('address/<int:address_id>/', UserAddressOperation.as_view(), name='address-detail'),
+    
+    path('getaddresses/', GetAddresses.as_view()),
     
 ]
 if settings.DEBUG:

@@ -23,6 +23,7 @@ from quotation.models import Quotation,SpecificSellerQuotation
 from profileseller.models import *
 from admindashboard.models import Credit
 from users.serializers import *
+from .models import *
 # # Create your views here.
 
 
@@ -44,9 +45,13 @@ class ProductinfoView(APIView):
         seller_id = Seller.objects.get(seller=user_id).id
         user_data = request.data.copy()
         part_id = user_data.get('part_id')
+        normal_rate = user_data.get('normalRate')
+        bulk_rate = user_data.get('bulkRate')
+        stock_quantity = user_data.get('stockQuantity')
+        units = user_data.get('units')
         print("Part ID: ", part_id)
-        check_product = productinfo.objects.filter(part_id=part_id,seller_id=seller_id,status='Approved')
-        
+        check_product = productinfo.objects.filter(part_id=part_id,seller_id=seller_id,status='Approved',normalRate=normal_rate,bulkRate=bulk_rate,stockQuantity=stock_quantity,units=units)
+        print("Check Product: ", check_product)
         if check_product.exists():
             return Response({'msg':'Product already exists'}, status=status.HTTP_400_BAD_REQUEST)
         else:
@@ -55,15 +60,29 @@ class ProductinfoView(APIView):
             user_data.setlist('otherPhotos', otherphotos)
             user_data.setlist('tags',tags)
             user_data.pop('otherPhotos[]')
-            user_data.pop('tags[]')  
+            user_data.pop('tags[]') 
+            
             user_data['seller_id'] = seller_id
             user_data['status'] = 'Approved'
-            serializer = productinfoSerializer(data=user_data,context={'view': self})
-            if serializer.is_valid():
-                serializer.save()
-                return Response({'msg':'Product added Sucessfullly'}, status=status.HTTP_201_CREATED)
-            else:
-                return Response({'msg':'Failed to Add Product'},serializer.errors, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            print("user_data: ", user_data)
+            try:
+                if user_data:
+                    part_id_instance = partinfo.objects.filter(id=part_id).first()
+                    seller_id_instance = Seller.objects.filter(id=seller_id).first()
+                    productinfo.objects.create(
+                        part_id=part_id_instance,
+                        normalRate=normal_rate,
+                        bulkRate=bulk_rate,
+                        stockQuantity=stock_quantity,
+                        units=units,
+                        seller_id=seller_id_instance,
+                        status='Approved'
+                    )
+                    return Response({'msg':'Product added Sucessfullly'}, status=status.HTTP_201_CREATED)
+                else:
+                    return Response({'msg':'Failed to Add Product'}, status=status.HTTP_400_BAD_REQUEST)
+            except Exception as e:
+                return Response({'msg': f'An error occurred: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class EditProductInfoView(APIView):
     permission_classes = (IsAuthenticated,)
@@ -627,7 +646,11 @@ class AdminOrderInfoView(APIView):
                 'payment_method': order.payment_method,
                 'total_items': count,
                 'total_price': order.total_price,
-                'products': [{'product_name': item.product.part_id.partName, 'quantity': item.quantity,} for item in cartdetails.all()],
+                'SellerName' : order.cart.products.first().seller_id.sellerprofile.storename,
+                'SellerPhone' : order.cart.products.first().seller_id.sellerprofile.storephone,
+                'SellerAddress' : order.cart.products.first().seller_id.selleraddress.address.descriptiveaddress,
+                'ReturnReason' : order.return_status,
+                'products': [{'product_name': item.product.part_id.partName, 'quantity': item.quantity, 'price': item.product.normalRate} for item in cartdetails.all()],
                 
             }
             data.append(order_data)

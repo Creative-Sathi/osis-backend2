@@ -51,7 +51,9 @@ class DocumentsView(APIView):
     parser_classes = [MultiPartParser, FormParser, JSONParser]
     
     def post(self, request, format=None):
-        user_data = request.data
+        print(request.data)
+        
+        user_data = request.data.copy()
         businessdocuments = user_data.getlist('businessdocuments[]')
         user_data.pop('businessdocuments[]')
         user_data.setlist('businessdocuments', businessdocuments)
@@ -71,6 +73,38 @@ class SellerView(APIView):
             seller = serializer.save()
             return Response({'msg':'Seller added Sucessfullly'}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors)
+    
+class UpdateProfileSellerView(APIView):
+    permission_classes = (AllowAny,)
+    
+    def post(self, request, format=None):
+        try:
+            seller_id = request.data['seller']
+            seller_profile_id = request.data['sellerprofile']
+            seller_profile_instance = SellerProfile.objects.get(id=seller_profile_id)
+            print(seller_profile_instance) 
+            seller = Seller.objects.get(id=seller_id)
+            seller.sellerprofile = seller_profile_instance            
+            seller.save()
+            return Response({'msg':'Seller added Sucessfullly'}, status=status.HTTP_201_CREATED)
+        except:
+            return Response({'msg':'Seller not found'}, status=status.HTTP_400_BAD_REQUEST)
+    
+class UpdateAddressView(APIView):
+    permission_classes = (AllowAny,)
+    
+    def post(self, request, format=None):
+        try:
+            seller_id = request.data['seller']
+            seller_address_id = request.data['selleraddress']
+            seller_address_instance = SellerAddress.objects.get(id=seller_address_id)
+            seller = Seller.objects.get(id=seller_id)
+            seller.selleraddress = seller_address_instance
+            seller.save()
+            return Response({'msg':'Seller added Sucessfullly'}, status=status.HTTP_201_CREATED)
+        except:
+            return Response({'msg':'Seller not found'}, status=status.HTTP_400_BAD_REQUEST)
+    
     
 # View for getting seller profile
 class GetSellerProfileView(APIView):

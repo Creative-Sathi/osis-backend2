@@ -226,8 +226,30 @@ class AddToCart(APIView):
             cart_item.quantity += 1
             cart_item.save()
 
-        return Response({'message': 'Product added to cart successfully'}, status=status.HTTP_201_CREATED)
+        return Response({'message': 'Product added to cart successfully', 'data':cart_item.id}, status=status.HTTP_201_CREATED)
 
+class BuyNow(APIView):
+    permission_classes = (IsAuthenticated,)
+    
+    def get(self, request, *args, **kwargs):
+        product_id = kwargs['product_id']
+        user = request.user
+        product = productinfo.objects.get(id=product_id, status='Approved')
+        
+        # Check if user has an active cart
+        try:
+            cart = Cart.objects.get(user=user, is_active=True)
+        except Cart.DoesNotExist:
+            cart = Cart.objects.create(user=user)
+        
+        # Add product to the cart
+        cart_item, created = CartItem.objects.get_or_create(cart=cart, product=product, is_active=False)
+
+        if not created:
+            cart_item.quantity += 1
+            cart_item.save()
+
+        return Response({'message': 'Product added to cart successfully', 'data':cart_item.id}, status=status.HTTP_201_CREATED)
 
 class CartListView(APIView):
     permission_classes = (IsAuthenticated,)
@@ -320,14 +342,45 @@ class OrderCreateView(APIView):
             # Get only selected items
             selected_items = CartItem.objects.filter(cart=cart, is_active=False)
             print("SELECTED ITEMS", selected_items)
-            # Find seller of selected items in list as there can  be many
-            sellers = selected_items.values_list('product__seller_id', flat=True)
+            sellers = set(selected_items.values_list('product__seller_id', flat=True))
             print("SELLERS", sellers)
             for seller in sellers:
                 # Create new cart for selected items
                 new_cart = Cart.objects.create(user=cart.user)
                 
                 new_selected_items = selected_items.filter(product__seller_id=seller)
+                print("NEW SELECTED ITEMS", new_selected_items)
+                
+                
+                total_price = 0;
+                total_items = 0;
+                
+                for items in new_selected_items:
+                    sellerid = items.product.seller_id.id
+                    productId = items.product.id
+                    product = productinfo.objects.get(id=productId)
+                    product.stockQuantity = int(product.stockQuantity) - 1
+                    
+                    
+                    credit_instance = Credit.objects.get(seller_profile=sellerid)
+                
+                    normalrate = items.product.normalRate
+                    bulkrate = items.product.bulkRate
+                    quantity = items.quantity
+                    
+                    print("QUANTITY", quantity)
+                    print("NORMAL RATE", normalrate)
+                    print("BULK RATE", bulkrate)
+                    
+                    if quantity > 4:
+                        total_price += float(bulkrate) * int(quantity)
+                    else:
+                        total_price += float(normalrate) * int(quantity)
+                    
+                    total_items += quantity 
+                    
+                credit_instance.balance = credit_instance.balance + total_price
+                   
                 
                 # Update the cart field of these items to new_cart
                 new_selected_items.update(cart=new_cart)
@@ -342,10 +395,12 @@ class OrderCreateView(APIView):
                     cart=new_cart,
                     delivery_address=address_instance,
                     payment_method=request.data.get('payment_method'),
-                    total_items=request.data.get('total_items'),
-                    total_price=request.data.get('total_price'),
+                    total_items=total_items,
+                    total_price=total_price,
                 )
-                print("ORDER CREATED")
+                product.save()
+                credit_instance.save()  
+                
                 
             return Response({'message': 'Order created successfully'}, status=status.HTTP_201_CREATED)
         except Cart.DoesNotExist:
@@ -458,6 +513,15 @@ class UserAddressOperation(APIView):
         address.delete()
         return Response({'message': 'Address deleted successfully'}, status=status.HTTP_200_OK)
     
+class GetAddresses(APIView):
+    permission_classes = (IsAuthenticated,)
+    
+    def get(self, request, *args, **kwargs):
+        user = request.user
+        addresses = UserAddress.objects.filter(user=user).order_by('-id')[:4]
+        addresses_data = UserAddressSerializer(addresses, many=True).data
+        return Response({'status': 'Success', 'data': addresses_data}, status=status.HTTP_200_OK)
+
 class ProductReview(APIView):
     permission_classes = (AllowAny,)
     

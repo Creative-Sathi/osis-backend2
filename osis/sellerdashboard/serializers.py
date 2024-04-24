@@ -24,7 +24,7 @@ class ReadproductinfoSerializer(serializers.ModelSerializer):
         fields = '__all__'
         
 class productinfoSerializer(serializers.ModelSerializer):
-    
+    part_id = partinfoSerializer(many=False,read_only=True)
     images = productimageSerializer(many = True,read_only=True,source='otherPhotos')
     otherPhotos = serializers.ListField(
         child = serializers.ImageField(allow_empty_file=False,use_url=False),
@@ -48,7 +48,9 @@ class productinfoSerializer(serializers.ModelSerializer):
         model = productinfo
         fields = '__all__'
         
-    def create(self,validated_data):       
+    def create(self,validated_data):  
+        
+        print("CALLED CREATE")     
         other_photos = validated_data.pop('otherPhotos')
         tags = validated_data.pop('tags')
 
@@ -63,6 +65,7 @@ class productinfoSerializer(serializers.ModelSerializer):
         return product
     
     def update(self, instance, validated_data):
+        print("CALLED UPDATE")
         other_photos = validated_data.pop('otherPhotos', [])
         tags = validated_data.pop('tags', [])
 

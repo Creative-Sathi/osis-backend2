@@ -589,7 +589,7 @@ class UpdateCreditView(APIView):
 def upload_folder(request):
     if request.method == 'POST' and request.FILES.get('zipFile'):
         zip_file = request.FILES.get('zipFile')
-        destination_folder = os.path.join(settings.MEDIA_ROOT, 'partimages')
+        destination_folder = os.path.join(settings.MEDIA_ROOT, 'uploads/partimages')
 
 
         # Ensure the destination folder exists, create if not
